@@ -2,34 +2,29 @@ package com.example.demo.mapper
 
 import com.example.demo.model.Pet
 import com.example.demo.model.PetDTO
-import com.example.demo.model.Tutor
-import com.example.demo.service.TutorService
+import com.example.demo.repository.TutorRepository
+import jakarta.validation.Validation
 import org.springframework.stereotype.Component
 
 @Component
-class PetMapper(private val tutorService: TutorService) {
+class PetMapper(private val tutorRepository: TutorRepository) {
 
-    fun toDTO(pet: Pet): PetDTO {
-        return PetDTO(
-            id = pet.id,
-            nome = pet.nome,
-            raca = pet.raca,
-            peso = pet.peso,
-            nascimento = pet.nascimento,
-            tutorId = pet.tutor.id
-        )
-    }
+    fun toDTO(pet: Pet): PetDTO =
+        PetDTO(pet.id, pet.nome, pet.raca, pet.peso, pet.nascimento, pet.tutor.id)
 
     fun fromDTO(petDTO: PetDTO): Pet {
-        val tutor: Tutor = tutorService.findById(petDTO.tutorId)
-            ?: throw IllegalArgumentException("Tutor não encontrado para o id ${petDTO.tutorId}")
-        return Pet(
-            id = petDTO.id,
-            nome = petDTO.nome,
-            raca = petDTO.raca,
-            peso = petDTO.peso,
-            nascimento = petDTO.nascimento,
-            tutor = tutor
-        )
+        val tutor = tutorRepository.findById(petDTO.tutorId)
+            .orElseThrow { IllegalArgumentException("Tutor não encontrado") }
+
+        val pet = Pet(0, petDTO.nome, petDTO.raca, petDTO.peso, petDTO.nascimento, tutor)
+
+        // Validação manual do objeto Pet
+        val validator = Validation.buildDefaultValidatorFactory().validator
+        val violations = validator.validate(pet)
+        if (violations.isNotEmpty()) {
+            throw IllegalArgumentException(violations.joinToString { it.message })
+        }
+
+        return pet
     }
 }
